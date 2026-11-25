@@ -124,7 +124,7 @@ function pintar() {
   } else if (p.tipo === 'gracias') {
     html = `<div class="exito">¡Gracias! Tu encuesta se guardó.</div>`
       + `<p class="pregunta-texto" style="margin-top:16px">Participante ${esc(p.participante)}</p>`
-      + `<p>Ya terminaste. Ahora desinstala Nutriz: mantén presionado su ícono y toca <b>Desinstalar</b>. Se borra todo lo que tenía.</p>`
+      + `<p>Ya terminaste. Para dejar tu teléfono como estaba:</p><ol><li>Desinstala Nutriz: mantén presionado su ícono y toca <b>Desinstalar</b>. Se borra todo lo que tenía.</li><li>Revisa que el permiso quede desactivado: en <b>Ajustes</b> busca <b>instalar aplicaciones desconocidas</b>, toca tu navegador y desactiva <b>Permitir de esta fuente</b>.</li></ol>`
       + `<a class="boton secundario" href="./">Volver al inicio</a>`;
   }
   $('tarjeta').innerHTML = `<div class="paso">${html}</div>`;
