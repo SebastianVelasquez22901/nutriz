@@ -100,11 +100,11 @@ function pintar() {
   $('tabla-tareas').innerHTML = '<tr><th>Pregunta</th><th class="num">Media</th><th class="num">Mediana</th><th class="num">DE</th><th class="num">n</th></tr>'
     + datos.tareas.map((t, i) => `<tr><td>${i + 1}. ${TAREAS[i]}</td><td class="num">${num(t.media)}</td><td class="num">${num(t.mediana)}</td><td class="num">${num(t.de)}</td><td class="num">${t.n}</td></tr>`).join('');
 
-  $('tabla-participantes').innerHTML = '<tr><th>Código</th><th>Edad</th><th>Estudios</th><th>Salud</th><th>Años con teléfono</th><th>Equipo</th><th class="num">SUS</th><th class="num">Envíos</th><th>Fecha</th><th></th></tr>'
+  $('tabla-participantes').innerHTML = '<tr><th>Código</th><th>Edad</th><th>Estudios</th><th>Salud</th><th>Años con teléfono</th><th>Equipo</th><th class="num">SUS</th><th>Fecha</th><th></th></tr>'
     + datos.respuestas.map((r) => `<tr><td><b>${esc(r.participante)}</b></td><td>${esc(r.perfil.edad)}</td>`
       + `<td>${esc(ETIQUETAS.escolaridad[r.perfil.escolaridad])}</td><td>${esc(ETIQUETAS.areaSalud[r.perfil.areaSalud])}</td>`
       + `<td>${esc(r.perfil.anosTelefono)}</td><td>${esc(ETIQUETAS.equipo[r.perfil.equipo])}${r.perfil.modelo ? `<br><small>${esc(r.perfil.modelo)}</small>` : ''}</td>`
-      + `<td class="num"><b>${num(r.susPuntaje)}</b></td><td class="num">${r.envios}</td>`
+      + `<td class="num"><b>${num(r.susPuntaje)}</b></td>`
       + `<td>${new Date(r.actualizadoEn).toLocaleString('es-GT')}</td>`
       + `<td><button class="mini" data-borrar="${esc(r.participante)}" type="button">Borrar</button></td></tr>`).join('');
 
@@ -161,10 +161,10 @@ $('csv').addEventListener('click', () => {
   const celda = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const cabecera = ['participante', 'edad', 'escolaridad', 'area_salud', 'anos_telefono', 'equipo', 'modelo',
     ...Array.from({ length: 10 }, (_, i) => `sus${i + 1}`), 'sus_puntaje',
-    ...Array.from({ length: 5 }, (_, i) => `tarea${i + 1}`), 'dificil', 'cambiaria', 'otros', 'envios', 'actualizado'];
+    ...Array.from({ length: 5 }, (_, i) => `tarea${i + 1}`), 'dificil', 'cambiaria', 'otros', 'fecha'];
   const filas = datos.respuestas.map((r) => [r.participante, r.perfil.edad, r.perfil.escolaridad, r.perfil.areaSalud,
     r.perfil.anosTelefono, r.perfil.equipo, r.perfil.modelo, ...r.sus, r.susPuntaje, ...r.tareas,
-    r.comentarios.dificil, r.comentarios.cambiaria, r.comentarios.otros, r.envios, r.actualizadoEn]);
+    r.comentarios.dificil, r.comentarios.cambiaria, r.comentarios.otros, r.actualizadoEn]);
   // BOM para que Excel lea bien las tildes.
   const texto = '﻿' + [cabecera, ...filas].map((f) => f.map(celda).join(',')).join('\r\n');
   const a = document.createElement('a');

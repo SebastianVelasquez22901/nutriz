@@ -14,12 +14,10 @@
   .seccion { font-size: .85rem; font-weight: 700; color: var(--primario); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
   .pregunta-texto { font-size: 1.2rem; font-weight: 700; line-height: 1.35; margin: 0 0 18px; color: var(--texto); }
   .lista-opciones { display: grid; gap: 10px; }
-  .lista-opciones button, .codigos button {
+  .lista-opciones button {
     margin: 0; background: var(--tarjeta); color: var(--texto); border: 1px solid var(--borde); font-weight: 600; text-align: left; padding: 14px 16px;
   }
-  .lista-opciones button.elegido, .codigos button.elegido, .likert button.elegido { background: var(--primario); color: #fff; border-color: var(--primario); }
-  .codigos { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-  .codigos button { text-align: center; padding: 14px 0; }
+  .lista-opciones button.elegido, .likert button.elegido { background: var(--primario); color: #fff; border-color: var(--primario); }
   .likert { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
   .likert button { margin: 0; height: 56px; padding: 0; font-size: 1.2rem; background: var(--tarjeta); color: var(--texto); border: 1px solid var(--borde); }
   .extremos { font-size: .85rem; }
@@ -75,7 +73,6 @@ const TAREAS = [
 // Cada paso es una pantalla. `cuenta` marca las preguntas que suman en la barra de progreso.
 const PASOS = [
   { tipo: 'inicio' },
-  { tipo: 'codigo', cuenta: true },
   { tipo: 'consentimiento', cuenta: true },
   ...PERFIL.map(([campo, texto, opciones]) => ({ tipo: 'opciones', seccion: 'Sobre ti', campo, texto, opciones, cuenta: true })),
   { tipo: 'aviso', seccion: 'Tu experiencia', texto: INSTRUCCIONES_SUS },
@@ -112,14 +109,9 @@ function pintar() {
     html = `<h1>¿Cómo te fue con Nutriz?</h1><p>Son ${TOTAL} preguntas cortas, unos 3 minutos. Toca una respuesta y pasa sola a la siguiente.</p>`
       + `<p>No hay respuestas buenas ni malas: evaluamos la aplicación, no a ti. No te pedimos tu nombre.</p>`
       + `<button type="button" data-accion="siguiente">Empezar</button>`;
-  } else if (p.tipo === 'codigo') {
-    const botones = Array.from({ length: 15 }, (_, k) => `P${String(k + 1).padStart(2, '0')}`)
-      .map((c) => `<button type="button" data-valor="${c}" class="${r.participante === c ? 'elegido' : ''}">${c.slice(1)}</button>`).join('');
-    html = cabecera(p) + `<p class="pregunta-texto">¿Cuál es tu código de participante?</p>`
-      + `<p class="ayuda">Te lo da la persona que te acompañó (por ejemplo, P03).</p><div class="codigos">${botones}</div>`;
   } else if (p.tipo === 'consentimiento') {
     html = cabecera(p) + `<p class="pregunta-texto">Antes de seguir</p>`
-      + `<p>Tus respuestas se guardan sin tu nombre, solo con tu código, y se usan de forma agregada en una tesis de la Universidad de San Carlos de Guatemala. Puedes dejar la encuesta cuando quieras.</p>`
+      + `<p>Tus respuestas se guardan sin tu nombre y se usan de forma agregada en una tesis de la Universidad de San Carlos de Guatemala. Puedes dejar la encuesta cuando quieras.</p>`
       + `<button type="button" data-accion="acepto">Acepto y sigo</button>`;
   } else if (p.tipo === 'opciones') {
     html = cabecera(p) + `<p class="pregunta-texto">${p.texto}</p><div class="lista-opciones">`
@@ -140,6 +132,8 @@ function pintar() {
       + `<button type="button" data-accion="enviar" id="enviar">Enviar la encuesta</button><div class="error" id="error" role="alert" hidden></div>`;
   } else if (p.tipo === 'gracias') {
     html = `<div class="exito">¡Gracias! Tu encuesta se guardó.</div>`
+      + `<p class="pregunta-texto" style="margin-top:16px">Eres el participante ${esc(p.participante)}</p>`
+      + `<p>Díselo a la persona que te acompañó.</p>`
       + `<p style="margin-top:14px">Ya puedes cerrar esta página. Si probaste la aplicación en tu propio teléfono, recuerda desinstalarla.</p>`
       + `<a class="boton secundario" href="./">Volver al inicio</a>`;
   }
@@ -151,13 +145,12 @@ const ir = (paso) => { avanzando = false; i = Math.max(0, Math.min(PASOS.length 
 
 async function enviar() {
   // Por si alguien llegó al final saltándose una pantalla (no debería poder): vuelve a la primera sin responder.
-  const falta = PASOS.findIndex((p) => p.cuenta && p.tipo !== 'texto' && (p.tipo === 'codigo' ? !r.participante
-    : p.tipo === 'consentimiento' ? !r.consentimiento : r[p.campo] === undefined));
+  const falta = PASOS.findIndex((p) => p.cuenta && p.tipo !== 'texto'
+    && (p.tipo === 'consentimiento' ? !r.consentimiento : r[p.campo] === undefined));
   if (falta >= 0) return ir(falta);
   $('enviar').disabled = true;
   $('enviar').textContent = 'Enviando…';
   const cuerpo = {
-    participante: r.participante,
     consentimiento: true,
     perfil: Object.fromEntries(PERFIL.map(([c]) => [c, r[c]])),
     sus: SUS.map((_, k) => r[`sus${k}`]),
@@ -172,8 +165,10 @@ async function enviar() {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo), signal: control.signal,
     }).finally(() => clearTimeout(reloj));
     if (!res.ok) throw new Error(String(res.status));
+    // El servidor asigna el código en orden de llegada (P01, P02…); se muestra para que el facilitador lo anote.
+    const { participante } = await res.json();
     try { sessionStorage.removeItem('encuesta'); } catch {}
-    PASOS.push({ tipo: 'gracias' });
+    PASOS.push({ tipo: 'gracias', participante });
     ir(PASOS.length - 1);
   } catch {
     $('error').textContent = 'No se pudo enviar. Revisa tu conexión a internet y toca "Enviar" otra vez; tus respuestas siguen aquí.';
@@ -197,7 +192,7 @@ $('tarjeta').addEventListener('click', (ev) => {
     if (avanzando) return;
     avanzando = true;
     const valor = p.tipo === 'likert' ? Number(b.dataset.valor) : b.dataset.valor;
-    if (p.tipo === 'codigo') r.participante = valor; else r[p.campo] = valor;
+    r[p.campo] = valor;
     guardar();
     b.parentElement.querySelectorAll('button').forEach((x) => x.classList.toggle('elegido', x === b));
     // Un instante para que se vea lo elegido antes de pasar a la siguiente.
