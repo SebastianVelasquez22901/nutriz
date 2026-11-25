@@ -211,9 +211,15 @@ $('acepto').addEventListener('click', async () => {
   }
 });
 
+// Se confirma con un segundo toque y no con window.confirm: el navegador de WhatsApp y otros no muestran ese cuadro.
+let confirmando = false;
 $('otra-persona').addEventListener('click', (ev) => {
   ev.preventDefault();
-  if (!window.confirm('¿Empezar como un participante nuevo? Este teléfono olvidará el número actual.')) return;
+  if (!confirmando) {
+    confirmando = true;
+    $('otra-persona').textContent = 'Toca otra vez para empezar como participante nuevo (este teléfono olvidará el número actual)';
+    return;
+  }
   olvidarParticipante();
   location.reload();
 });
