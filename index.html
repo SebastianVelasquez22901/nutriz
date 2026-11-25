@@ -4,16 +4,37 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Descargar Nutriz</title>
+<title>Prueba de Nutriz</title>
 <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
 <main>
   <img class="logo" src="logo.png" alt="Nutriz">
+  <div class="tarjeta" id="bienvenida" hidden>
+    <h1>Prueba de la aplicación Nutriz</h1>
+    <p>Gracias por ayudarnos. Vas a instalar un prototipo en tu teléfono o tablet Android, hacer unas tareas cortas con niños inventados y contarnos cómo te fue. Toma de 20 a 30 minutos.</p>
+    <h2>Antes de empezar, lee esto</h2>
+    <ul>
+      <li><b>Qué harás:</b> instalar la aplicación, seguir 6 tareas paso a paso y responder una encuesta de unas 25 preguntas. Evaluamos la aplicación, no a ti.</li>
+      <li><b>Datos:</b> todos los niños son inventados. De ti solo guardamos, con un número en lugar de tu nombre, tu rango de edad, tu escolaridad, si trabajas o estudias en salud, tus años usando teléfono y el tipo de equipo, además de lo que registres en la aplicación y la hora en que lo hiciste.</li>
+      <li><b>Tu teléfono:</b> la aplicación no pide permiso para ver tus contactos, fotos, ubicación ni cámara. Al terminar la desinstalas y se borra todo lo que tenía.</li>
+      <li><b>Dónde se guarda:</b> en un servidor protegido con contraseña al que solo tiene acceso el responsable, Sebastian Alejandro Velasquez Bonilla (tesis de Ingeniería en Ciencias y Sistemas, USAC). Se borra cuando se apruebe la tesis.</li>
+      <li><b>Es voluntario:</b> puedes dejar la prueba cuando quieras, sin dar explicaciones. No recibes pago. No hay riesgos previsibles. Este estudio no fue revisado por un comité de ética.</li>
+    </ul>
+    <button id="acepto" type="button">Acepto participar</button>
+    <div class="error" id="error-acepto" role="alert" hidden></div>
+  </div>
+
+  <div id="participando" hidden>
   <div class="tarjeta">
+    <div class="exito">Eres el participante <span id="codigo"></span></div>
+    <p style="margin-top: 12px">Anota tu número por si cambias de navegador. Tu usuario para la aplicación es <b id="cuenta-usuario"></b> y tu contraseña, <b id="cuenta-contrasena"></b>; también aparecen en las tareas.</p>
+  </div>
+  <div class="tarjeta">
+    <div class="seccion-paso">Paso 1</div>
     <section id="formulario">
       <h1>Descargar la aplicación</h1>
-      <p>Prototipo para la prueba de usabilidad. Escribe el usuario y la contraseña que te dieron.</p>
+      <p>Escribe el usuario y la contraseña de descarga que te enviaron por mensaje.</p>
       <form id="acceso" autocomplete="off">
         <label for="usuario">Usuario</label>
         <input id="usuario" autocapitalize="none" autocorrect="off" spellcheck="false" required>
@@ -34,23 +55,31 @@
         <li>Si aparece un aviso de Play Protect, toca <strong>Más detalles</strong> y luego <strong>Instalar de todas formas</strong>. La aplicación es un prototipo y no está en Play Store.</li>
         <li>Al terminar la prueba, desinstálala: se borran todos sus datos.</li>
       </ol>
-      <button id="otra" type="button">Descargar otra vez</button>
+      <button id="otra" type="button" class="secundario">Descargar otra vez</button>
     </section>
   </div>
   <div class="tarjeta">
-    <h2>Después de probarla</h2>
-    <p>Cuéntanos cómo te fue. Son unos 5 minutos y no pedimos tu nombre.</p>
+    <div class="seccion-paso">Paso 2</div>
+    <h2>Haz las tareas</h2>
+    <p>Te guiamos una por una. Ten a la mano la aplicación ya instalada.</p>
+    <a class="boton" href="tareas.html">Ver las tareas</a>
+  </div>
+  <div class="tarjeta">
+    <div class="seccion-paso">Paso 3</div>
+    <h2>Cuéntanos cómo te fue</h2>
+    <p>Una encuesta corta, sin tu nombre.</p>
     <a class="boton" href="encuesta.html">Llenar la encuesta</a>
-    <a class="boton secundario" href="manual.pdf" target="_blank" rel="noopener">Ver el manual de uso (PDF)</a>
+    <a class="boton secundario" href="manual.pdf" target="_blank" rel="noopener">Manual de uso (PDF), por si te trabas</a>
+  </div>
+  <p class="pie"><a href="#" id="otra-persona">¿Otra persona va a participar en este teléfono?</a></p>
   </div>
   <p class="pie">Requiere Android 7.0 o superior. · <a href="resultados.html">Resultados (administrador)</a></p>
 </main>
+<script src="participante.js"></script>
 <script>
 // El APK está cifrado (prototipo/descarga/cifrar_apk.mjs): AES-256-GCM en partes, con la llave derivada del usuario
 // y la contraseña. Se descifra aquí, en el teléfono; sin las credenciales correctas el archivo no sirve.
 const $ = (id) => document.getElementById(id);
-// Despierta el servidor de pruebas (el plan F1 de Azure se duerme sin uso y tarda en arrancar) mientras se descarga.
-fetch('https://nutriz-api-6635.azurewebsites.net/salud', { mode: 'no-cors' }).catch(() => {});
 const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 const texto = new TextEncoder();
 
@@ -147,6 +176,45 @@ $('otra').addEventListener('click', () => {
   $('formulario').hidden = false;
   $('barra').hidden = true;
   $('estado').textContent = '';
+});
+
+// Primero el consentimiento: al aceptarlo, el servidor da el número de participante y su cuenta de la app.
+function mostrarParticipante(p) {
+  $('bienvenida').hidden = true;
+  $('participando').hidden = false;
+  $('codigo').textContent = p.participante;
+  $('cuenta-usuario').textContent = p.usuario;
+  $('cuenta-contrasena').textContent = p.contrasena;
+}
+
+const guardado = participanteGuardado();
+if (guardado) mostrarParticipante(guardado); else $('bienvenida').hidden = false;
+
+$('acepto').addEventListener('click', async () => {
+  $('error-acepto').hidden = true;
+  $('acepto').disabled = true;
+  $('acepto').textContent = 'Un momento…';
+  try {
+    const p = await enviarJson('/participantes', { consentimiento: true });
+    guardarParticipante(p);
+    mostrarParticipante(p);
+    window.scrollTo({ top: 0 });
+  } catch (err) {
+    $('error-acepto').textContent = err.status === 409
+      ? 'Ya se completó el cupo de participantes. ¡Gracias por tu interés!'
+      : 'No se pudo conectar. Revisa tu internet y vuelve a tocar el botón (el servidor puede tardar un minuto en despertar).';
+    $('error-acepto').hidden = false;
+  } finally {
+    $('acepto').disabled = false;
+    $('acepto').textContent = 'Acepto participar';
+  }
+});
+
+$('otra-persona').addEventListener('click', (ev) => {
+  ev.preventDefault();
+  if (!window.confirm('¿Empezar como un participante nuevo? Este teléfono olvidará el número actual.')) return;
+  olvidarParticipante();
+  location.reload();
 });
 </script>
 </body>

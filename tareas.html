@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Tareas Nutriz</title>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<main>
+  <img class="logo" src="logo.png" alt="Nutriz">
+  <div class="tarjeta" id="tarjeta"></div>
+  <p class="pie"><a href="./">Volver al inicio</a> · <a href="manual.pdf" target="_blank" rel="noopener">Manual (PDF)</a></p>
+</main>
+<script src="participante.js"></script>
+<script>
+// Las tareas del protocolo de usabilidad (pruebas/usabilidad/protocolo.md), adaptadas a la prueba remota (T115): la
+// persona prepara sola la aplicación (usuario y conexión) y la tarea 6 busca a la niña que ella misma registró. Lo que
+// hace se mide en el servidor (lo que sincronizó y a qué hora) y en la encuesta (comprensión del resultado).
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let p = participanteGuardado();
+
+const datos = (filas) => `<dl class="tarjeta-datos">${filas.map(([t, v]) => `<dt>${t}</dt><dd>${v}</dd>`).join('')}</dl>`;
+const RESPUESTAS_T4 = [
+  ['¿Vive con su madre biológica?', 'Sí'], ['¿Es gemelo o mellizo?', 'No'], ['¿Qué número de hijo es?', '2'],
+  ['Meses desde el hermano anterior', '30'], ['Al nacer, el niño era…', 'Promedio'], ['¿Dónde nació?', 'Hospital o centro público'],
+  ['Edad de la madre', '28'], ['Años de estudio de la madre', '6'], ['Edad de la madre en su primer parto', '20'],
+  ['Hijos nacidos vivos', '2'], ['¿La madre trabaja?', 'No'], ['¿Casada o unida?', 'Sí'], ['¿Tiene seguro de salud?', 'No'],
+  ['Talla de la madre', 'No se midió'], ['Departamento', 'Huehuetenango'], ['¿Área rural?', 'Sí'], ['Personas en el hogar', '6'],
+  ['Niños de 5 años o menos en el hogar', '2'], ['¿La madre es jefa de hogar?', 'No'], ['Agua para beber', 'Tubería en el patio'],
+  ['Servicio sanitario', 'Letrina'], ['¿Hay electricidad?', 'Sí'], ['Piso', 'Tierra'], ['¿Cocina con leña o carbón?', 'Sí'],
+];
+
+const PASOS = () => [
+  { titulo: 'Antes de empezar', cuerpo: `<p>Abre la aplicación <b>Nutriz</b> que instalaste. Vas a ir y venir entre la aplicación y esta página: la página recuerda en qué paso vas.</p><p>Haz cada tarea <b>sin ayuda de otra persona</b>, como puedas. Si algo no te sale, no pasa nada: sigue con la siguiente. Evaluamos la aplicación, no a ti.</p>`, boton: 'Empezar' },
+  { titulo: 'Entra por primera vez', cuerpo: `<p>En la aplicación, crea tu usuario:</p>${datos([['Nombre del promotor', 'Promotor de prueba'], ['PIN', '1234 (o el que quieras, de 4 a 8 números)']])}<p>Toca <b>Crear usuario y entrar</b>.</p>` },
+  { titulo: 'Conecta la aplicación', cuerpo: `<p>En la lista de niños toca <b>Sincronizar</b>. La dirección ya viene puesta. Escribe:</p>${datos([['Usuario', esc(p.usuario)], ['Contraseña', esc(p.contrasena)]])}<p>Toca <b>Conectar</b>. Cuando diga "Conectado al servidor", vuelve a la lista con la flecha de arriba.</p><p class="ayuda">Si tarda, espera un minuto: el servidor se estaba despertando.</p>` },
+  { seccion: 'Tarea 1 de 6', titulo: 'Registra a una niña nueva', cuerpo: datos([['Nombre', 'María Ficticia López'], ['Fecha de nacimiento', '14 de junio de 2023'], ['Sexo', 'Niña'], ['Comunidad', 'Aldea Ficticia']]) + '<p>Cuando la guardes, la aplicación te pasa a la medición.</p>' },
+  { seccion: 'Tarea 2 de 6', titulo: 'Anota la medición de hoy de María', cuerpo: datos([['Peso', '11.2 kg'], ['Talla', '90.5 cm, medida de pie'], ['Perímetro braquial', '12.0 cm']]) + '<p>Guárdala para ver el resultado.</p>' },
+  { seccion: 'Tarea 3 de 6', titulo: 'Lee el resultado', cuerpo: '<p>Según la aplicación, <b>¿cómo está María y qué deberías hacer?</b></p><p>Fíjate en el color y en lo que dice. Te lo preguntaremos en la encuesta.</p>' },
+  { seccion: 'Tarea 4 de 6', titulo: 'Llena el cuestionario de riesgo de María', cuerpo: `<p>Busca cómo llenar el cuestionario de riesgo y usa estas respuestas de su madre (son inventadas):</p><ol class="respuestas">${RESPUESTAS_T4.map(([q, r]) => `<li>${q}: <b>${r}</b></li>`).join('')}</ol><p style="margin-top:12px">Al final, calcula el riesgo y guárdalo.</p>` },
+  { seccion: 'Tarea 5 de 6', titulo: 'Envía todo al servidor', cuerpo: '<p>Haz que todo lo que registraste llegue al servidor. Sabrás que terminó cuando la aplicación lo diga.</p>' },
+  { seccion: 'Tarea 6 de 6', titulo: 'Busca a María', cuerpo: '<p>Desde la lista de niños, <b>busca a María</b> y abre su ficha. Fíjate en la fecha de su última medición.</p>' },
+  { titulo: '¡Terminaste las tareas!', cuerpo: '<p>Ahora cuéntanos cómo te fue. Son unos 3 minutos.</p><a class="boton" href="encuesta.html">Llenar la encuesta</a><p class="ayuda" style="margin-top:16px">Después de la encuesta, desinstala Nutriz: mantén presionado su ícono y toca Desinstalar.</p>', final: true },
+];
+
+let i = 0;
+try { i = Number(localStorage.getItem(CLAVE_TAREA) ?? 0) || 0; } catch {}
+
+function pintar() {
+  if (!p) {
+    // Abrió las tareas en otro navegador: recupera su número para mostrarle su cuenta de la app.
+    $('tarjeta').innerHTML = `<h1>¿Cuál es tu número de participante?</h1><p>Aparece en la página de inicio después de aceptar participar (por ejemplo, P04).</p>`
+      + `<label for="numero">Número</label><input id="numero" inputmode="numeric" placeholder="P04" maxlength="3">`
+      + `<button type="button" id="usar">Seguir</button><a class="boton secundario" href="./">Aún no tengo número</a><div class="error" id="error" hidden></div>`;
+    $('usar').onclick = () => {
+      const n = /^p?(\d{1,2})$/i.exec($('numero').value.trim());
+      if (!n || Number(n[1]) < 1) { $('error').textContent = 'Escribe un número como P04.'; $('error').hidden = false; return; }
+      const codigo = `P${n[1].padStart(2, '0')}`;
+      p = { participante: codigo, usuario: codigo.toLowerCase(), contrasena: `nutriz${codigo.slice(1)}` };
+      guardarParticipante(p);
+      pintar();
+    };
+    return;
+  }
+  const pasos = PASOS();
+  i = Math.max(0, Math.min(pasos.length - 1, i));
+  try { localStorage.setItem(CLAVE_TAREA, String(i)); } catch {}
+  const paso = pasos[i];
+  $('tarjeta').innerHTML = `<div class="paso"><div class="progreso"><button class="atras" type="button" id="atras" ${i === 0 ? 'hidden' : ''}>‹ Atrás</button>`
+    + `<div class="barra"><div style="width:${Math.round(i / (pasos.length - 1) * 100)}%"></div></div><small>${p.participante}</small></div>`
+    + (paso.seccion ? `<div class="seccion">${paso.seccion}</div>` : '')
+    + `<p class="pregunta-texto">${paso.titulo}</p>${paso.cuerpo}`
+    + (paso.final ? '' : `<button type="button" id="siguiente">${paso.boton ?? 'Listo, siguiente'}</button>`) + '</div>';
+  $('atras').onclick = () => { i -= 1; pintar(); window.scrollTo({ top: 0 }); };
+  if (!paso.final) $('siguiente').onclick = () => { i += 1; pintar(); window.scrollTo({ top: 0 }); };
+}
+pintar();
+</script>
+</body>
+</html>

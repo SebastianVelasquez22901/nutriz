@@ -6,25 +6,6 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Encuesta Nutriz</title>
 <link rel="stylesheet" href="estilos.css">
-<style>
-  .progreso { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-  .progreso .barra { flex: 1; margin: 0; }
-  .progreso small { color: var(--suave); white-space: nowrap; }
-  .atras { background: none; color: var(--primario); width: auto; margin: 0; padding: 4px 0; font-weight: 600; }
-  .seccion { font-size: .85rem; font-weight: 700; color: var(--primario); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
-  .pregunta-texto { font-size: 1.2rem; font-weight: 700; line-height: 1.35; margin: 0 0 18px; color: var(--texto); }
-  .lista-opciones { display: grid; gap: 10px; }
-  .lista-opciones button {
-    margin: 0; background: var(--tarjeta); color: var(--texto); border: 1px solid var(--borde); font-weight: 600; text-align: left; padding: 14px 16px;
-  }
-  .lista-opciones button.elegido, .likert button.elegido { background: var(--primario); color: #fff; border-color: var(--primario); }
-  .likert { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-  .likert button { margin: 0; height: 56px; padding: 0; font-size: 1.2rem; background: var(--tarjeta); color: var(--texto); border: 1px solid var(--borde); }
-  .extremos { font-size: .85rem; }
-  .paso { animation: entrar .2s ease-out; }
-  @keyframes entrar { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
-  @media (prefers-reduced-motion: reduce) { .paso { animation: none; } }
-</style>
 </head>
 <body>
 <main>
@@ -32,11 +13,8 @@
   <div class="tarjeta" id="tarjeta"></div>
   <p class="pie"><a href="./">Volver al inicio</a></p>
 </main>
+<script src="participante.js"></script>
 <script>
-const API = 'https://nutriz-api-6635.azurewebsites.net';
-// Despierta el servidor (Azure F1 se duerme sin uso) mientras la persona responde.
-fetch(`${API}/salud`, { mode: 'no-cors' }).catch(() => {});
-
 const ESCALA = 'De 1 (totalmente en desacuerdo) a 5 (totalmente de acuerdo)';
 // Los valores deben coincidir con backend/src/encuesta/dto.ts.
 const PERFIL = [
@@ -69,15 +47,28 @@ const TAREAS = [
   'Supe cuándo mis datos ya habían llegado al servidor.',
   'Me sentiría seguro de usar la aplicación en un lugar sin internet.',
 ];
+// Lo que en la prueba presencial observaba el facilitador (T115). Lo correcto en la tarea 3 es amarillo y seguimiento.
+const COMPRENSION = [
+  ['color', 'En la tarea 3, ¿de qué color salió el resultado de María?', [['verde', 'Verde'], ['amarillo', 'Amarillo'], ['rojo', 'Rojo'], ['gris', 'Gris'], ['no_se', 'No me acuerdo']]],
+  ['accion', 'Según la aplicación, ¿qué había que hacer con María?', [['nada', 'Nada, está bien'], ['seguimiento', 'Darle seguimiento y consejería'], ['referir', 'Referirla al servicio de salud'], ['revisar', 'Revisar las medidas'], ['no_se', 'No sé']]],
+  ['buscar', 'En la tarea 6, ¿pudiste encontrar a María y abrir su ficha?', [['si', 'Sí'], ['no', 'No'], ['no_intente', 'No lo intenté']]],
+  ['ayuda', '¿Alguien te ayudó durante las tareas?', [['si', 'Sí'], ['no', 'No']]],
+  ['manual', '¿Usaste el manual de uso?', [['si', 'Sí'], ['no', 'No']]],
+];
+
+// Quien aceptó participar en la portada ya dio su consentimiento y tiene número; si no, lo da aquí y el servidor le
+// asigna uno al enviar.
+const yaParticipa = participanteGuardado();
 
 // Cada paso es una pantalla. `cuenta` marca las preguntas que suman en la barra de progreso.
 const PASOS = [
   { tipo: 'inicio' },
-  { tipo: 'consentimiento', cuenta: true },
+  ...(yaParticipa ? [] : [{ tipo: 'consentimiento', cuenta: true }]),
   ...PERFIL.map(([campo, texto, opciones]) => ({ tipo: 'opciones', seccion: 'Sobre ti', campo, texto, opciones, cuenta: true })),
   { tipo: 'aviso', seccion: 'Tu experiencia', texto: INSTRUCCIONES_SUS },
   ...SUS.map((texto, i) => ({ tipo: 'likert', seccion: 'Tu experiencia', campo: `sus${i}`, texto, cuenta: true })),
   ...TAREAS.map((texto, i) => ({ tipo: 'likert', seccion: 'Las tareas que hiciste', campo: `tarea${i}`, texto, cuenta: true })),
+  ...COMPRENSION.map(([campo, texto, opciones]) => ({ tipo: 'opciones', seccion: 'Las tareas que hiciste', campo, texto, opciones, cuenta: true })),
   { tipo: 'texto', seccion: 'En tus palabras (opcional)', campo: 'dificil', texto: '¿Qué fue lo más difícil o confuso?', cuenta: true },
   { tipo: 'texto', seccion: 'En tus palabras (opcional)', campo: 'cambiaria', texto: '¿Qué le cambiarías a la aplicación?', cuenta: true },
   { tipo: 'enviar' },
@@ -106,7 +97,7 @@ function pintar() {
   const p = PASOS[i];
   let html = '';
   if (p.tipo === 'inicio') {
-    html = `<h1>¿Cómo te fue con Nutriz?</h1><p>Son ${TOTAL} preguntas cortas, unos 3 minutos. Toca una respuesta y pasa sola a la siguiente.</p>`
+    html = `<h1>¿Cómo te fue con Nutriz?</h1><p>Son ${TOTAL} preguntas cortas, unos 4 minutos. Toca una respuesta y pasa sola a la siguiente.</p>`
       + `<p>No hay respuestas buenas ni malas: evaluamos la aplicación, no a ti. No te pedimos tu nombre.</p>`
       + `<button type="button" data-accion="siguiente">Empezar</button>`;
   } else if (p.tipo === 'consentimiento') {
@@ -132,9 +123,8 @@ function pintar() {
       + `<button type="button" data-accion="enviar" id="enviar">Enviar la encuesta</button><div class="error" id="error" role="alert" hidden></div>`;
   } else if (p.tipo === 'gracias') {
     html = `<div class="exito">¡Gracias! Tu encuesta se guardó.</div>`
-      + `<p class="pregunta-texto" style="margin-top:16px">Eres el participante ${esc(p.participante)}</p>`
-      + `<p>Díselo a la persona que te acompañó.</p>`
-      + `<p style="margin-top:14px">Ya puedes cerrar esta página. Si probaste la aplicación en tu propio teléfono, recuerda desinstalarla.</p>`
+      + `<p class="pregunta-texto" style="margin-top:16px">Participante ${esc(p.participante)}</p>`
+      + `<p>Ya terminaste. Ahora desinstala Nutriz: mantén presionado su ícono y toca <b>Desinstalar</b>. Se borra todo lo que tenía.</p>`
       + `<a class="boton secundario" href="./">Volver al inicio</a>`;
   }
   $('tarjeta').innerHTML = `<div class="paso">${html}</div>`;
@@ -151,22 +141,26 @@ async function enviar() {
   $('enviar').disabled = true;
   $('enviar').textContent = 'Enviando…';
   const cuerpo = {
+    participante: yaParticipa?.participante,
     consentimiento: true,
     perfil: Object.fromEntries(PERFIL.map(([c]) => [c, r[c]])),
     sus: SUS.map((_, k) => r[`sus${k}`]),
     tareas: TAREAS.map((_, k) => r[`tarea${k}`]),
+    comprension: Object.fromEntries(COMPRENSION.map(([c]) => [c, r[c]])),
     comentarios: Object.fromEntries(['dificil', 'cambiaria'].map((c) => [c, (r[c] ?? '').trim()]).filter(([, v]) => v)),
   };
   try {
-    // Hasta 90 s: si el servidor estaba dormido, la primera respuesta tarda.
-    const control = new AbortController();
-    const reloj = setTimeout(() => control.abort(), 90000);
-    const res = await fetch(`${API}/encuesta`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo), signal: control.signal,
-    }).finally(() => clearTimeout(reloj));
-    if (!res.ok) throw new Error(String(res.status));
-    // El servidor asigna el código en orden de llegada (P01, P02…); se muestra para que el facilitador lo anote.
-    const { participante } = await res.json();
+    let res;
+    try {
+      res = await enviarJson('/encuesta', cuerpo);
+    } catch (err) {
+      // El número guardado ya no existe en el servidor (por ejemplo, se borró una prueba): se envía sin número y el
+      // servidor asigna uno nuevo.
+      if (err.status !== 400 || !cuerpo.participante) throw err;
+      olvidarParticipante();
+      res = await enviarJson('/encuesta', { ...cuerpo, participante: undefined });
+    }
+    const { participante } = res;
     try { sessionStorage.removeItem('encuesta'); } catch {}
     PASOS.push({ tipo: 'gracias', participante });
     ir(PASOS.length - 1);

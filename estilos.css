@@ -76,3 +76,28 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 button.mini { display: inline-block; width: auto; margin: 0; padding: 6px 10px; font-size: .85rem; background: var(--rojo-suave); color: var(--rojo); }
 .fila-botones { display: flex; gap: 10px; flex-wrap: wrap; }
 .fila-botones button { width: auto; flex: 1; margin-top: 22px; }
+
+/* Pantallas de a una pregunta o un paso (encuesta y tareas) */
+.progreso { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+.progreso .barra { flex: 1; margin: 0; }
+.progreso small { color: var(--suave); white-space: nowrap; }
+.atras { background: none; color: var(--primario); width: auto; margin: 0; padding: 4px 0; font-weight: 600; }
+.seccion { font-size: .85rem; font-weight: 700; color: var(--primario); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+.pregunta-texto { font-size: 1.2rem; font-weight: 700; line-height: 1.35; margin: 0 0 18px; color: var(--texto); }
+.lista-opciones { display: grid; gap: 10px; }
+.lista-opciones button {
+  margin: 0; background: var(--tarjeta); color: var(--texto); border: 1px solid var(--borde); font-weight: 600; text-align: left; padding: 14px 16px;
+}
+.lista-opciones button.elegido, .likert button.elegido { background: var(--primario); color: #fff; border-color: var(--primario); }
+.likert { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.likert button { margin: 0; height: 56px; padding: 0; font-size: 1.2rem; background: var(--tarjeta); color: var(--texto); border: 1px solid var(--borde); }
+.extremos { font-size: .85rem; }
+.paso { animation: entrar .2s ease-out; }
+@keyframes entrar { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .paso { animation: none; } }
+.seccion-paso { font-size: .8rem; font-weight: 700; color: var(--primario); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+.tarjeta-datos { background: var(--fondo); border-radius: 10px; padding: 12px 14px; margin: 10px 0; }
+.tarjeta-datos dt { font-size: .85rem; color: var(--suave); }
+.tarjeta-datos dd { margin: 0 0 8px; font-weight: 700; }
+.respuestas { font-size: .95rem; margin: 0; padding-left: 1.2em; }
+.respuestas li { margin: 3px 0; }
