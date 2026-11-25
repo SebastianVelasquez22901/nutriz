@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Resultados Nutriz</title>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<main id="principal">
+  <img class="logo" src="logo.png" alt="Nutriz">
+  <div class="tarjeta" id="entrada">
+    <h1>Resultados de la encuesta</h1>
+    <p>Solo para el administrador.</p>
+    <form id="acceso" autocomplete="off">
+      <label for="usuario">Usuario</label>
+      <input id="usuario" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      <label for="contrasena">Contraseña</label>
+      <input id="contrasena" type="password" required>
+      <button id="entrar" type="submit">Entrar</button>
+    </form>
+    <div class="error" id="error" role="alert" hidden></div>
+  </div>
+
+  <div id="panel" hidden>
+    <div class="tarjeta">
+      <h1>System Usability Scale (SUS)</h1>
+      <p>Puntaje de 0 a 100. Referencia: 65.9 es el promedio de las interfaces de teléfono celular (Bangor et al., 2009, tabla 1).</p>
+      <div class="cifras" id="cifras-sus"></div>
+      <div class="fila-botones">
+        <button id="actualizar" type="button">Actualizar</button>
+        <button id="csv" type="button" class="secundario">Descargar CSV</button>
+      </div>
+    </div>
+    <div class="tarjeta">
+      <h2>Las tareas de la aplicación</h2>
+      <p>De 1 (totalmente en desacuerdo) a 5 (totalmente de acuerdo).</p>
+      <div class="tabla"><table id="tabla-tareas"></table></div>
+    </div>
+    <div class="tarjeta">
+      <h2>Participantes</h2>
+      <div class="tabla"><table id="tabla-participantes"></table></div>
+    </div>
+    <div class="tarjeta">
+      <h2>Comentarios</h2>
+      <div id="comentarios"></div>
+    </div>
+    <p class="pie"><a href="./">Volver al inicio</a></p>
+  </div>
+</main>
+<script>
+const API = 'https://nutriz-api-6635.azurewebsites.net';
+fetch(`${API}/salud`, { mode: 'no-cors' }).catch(() => {});
+
+// Deben coincidir con encuesta.html.
+const TAREAS = [
+  'Registrar a un niño nuevo', 'Anotar peso, talla y perímetro', 'Entender el color y qué hacer',
+  'Llenar el cuestionario de riesgo', 'Entender el resultado del riesgo', 'Saber si los datos llegaron',
+  'Encontrar a un niño registrado', 'Usarla sin internet',
+];
+const ETIQUETAS = {
+  escolaridad: { ninguna: 'Ninguna', primaria: 'Primaria', basicos: 'Básicos', diversificado: 'Diversificado', universidad: 'Universidad' },
+  equipo: { telefono: 'Teléfono', tablet: 'Tablet' },
+  areaSalud: { si: 'Sí', no: 'No' },
+};
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const num = (x) => (x === null || x === undefined ? '—' : Number(x).toLocaleString('es-GT', { maximumFractionDigits: 2 }));
+// El token vive solo en memoria: al cerrar la página hay que volver a entrar.
+let token = null;
+let datos = null;
+
+async function pedir(ruta, opciones = {}) {
+  const r = await fetch(`${API}${ruta}`, { ...opciones, headers: { ...(opciones.headers ?? {}), Authorization: `Bearer ${token}` } });
+  if (r.status === 401 || r.status === 403) throw new Error('sesion');
+  if (!r.ok) throw new Error('red');
+  return r.json();
+}
+
+function mostrarError(err) {
+  $('panel').hidden = true;
+  $('entrada').hidden = false;
+  $('principal').classList.remove('ancho');
+  $('error').textContent = err.message === 'sesion'
+    ? 'La sesión venció o el usuario no es el administrador. Vuelve a entrar.'
+    : err.message === 'credenciales' ? 'Usuario o contraseña incorrectos.'
+    : 'No se pudo conectar con el servidor. Si estaba dormido, espera un minuto y vuelve a intentar.';
+  $('error').hidden = false;
+}
+
+function pintar() {
+  const s = datos.sus;
+  $('cifras-sus').innerHTML = [
+    ['Respuestas', s.n], ['Media', num(s.media)], ['Mediana', num(s.mediana)], ['Desviación estándar', num(s.de)],
+    ['Mínimo – máximo', s.n ? `${num(s.minimo)} – ${num(s.maximo)}` : '—'],
+    ['IC 95 % de la media', s.ic95 ? `${num(s.ic95[0])} – ${num(s.ic95[1])}` : '—'],
+  ].map(([t, v]) => `<div class="cifra"><b>${v}</b><small>${t}</small></div>`).join('');
+
+  $('tabla-tareas').innerHTML = '<tr><th>Pregunta</th><th class="num">Media</th><th class="num">Mediana</th><th class="num">DE</th><th class="num">n</th></tr>'
+    + datos.tareas.map((t, i) => `<tr><td>${i + 1}. ${TAREAS[i]}</td><td class="num">${num(t.media)}</td><td class="num">${num(t.mediana)}</td><td class="num">${num(t.de)}</td><td class="num">${t.n}</td></tr>`).join('');
+
+  $('tabla-participantes').innerHTML = '<tr><th>Código</th><th>Edad</th><th>Estudios</th><th>Salud</th><th>Años con teléfono</th><th>Equipo</th><th class="num">SUS</th><th class="num">Envíos</th><th>Fecha</th><th></th></tr>'
+    + datos.respuestas.map((r) => `<tr><td><b>${esc(r.participante)}</b></td><td>${esc(r.perfil.edad)}</td>`
+      + `<td>${esc(ETIQUETAS.escolaridad[r.perfil.escolaridad])}</td><td>${esc(ETIQUETAS.areaSalud[r.perfil.areaSalud])}</td>`
+      + `<td>${esc(r.perfil.anosTelefono)}</td><td>${esc(ETIQUETAS.equipo[r.perfil.equipo])}${r.perfil.modelo ? `<br><small>${esc(r.perfil.modelo)}</small>` : ''}</td>`
+      + `<td class="num"><b>${num(r.susPuntaje)}</b></td><td class="num">${r.envios}</td>`
+      + `<td>${new Date(r.actualizadoEn).toLocaleString('es-GT')}</td>`
+      + `<td><button class="mini" data-borrar="${esc(r.participante)}" type="button">Borrar</button></td></tr>`).join('');
+
+  const textos = datos.respuestas.flatMap((r) => [['dificil', 'Lo más difícil'], ['cambiaria', 'Le cambiaría'], ['otros', 'Otros']]
+    .filter(([k]) => r.comentarios[k]).map(([k, t]) => `<li><b>${esc(r.participante)} · ${t}:</b> ${esc(r.comentarios[k])}</li>`));
+  $('comentarios').innerHTML = textos.length ? `<ul>${textos.join('')}</ul>` : '<p>Todavía no hay comentarios.</p>';
+}
+
+async function cargar() {
+  datos = await pedir('/encuesta/resultados');
+  pintar();
+  $('entrada').hidden = true;
+  $('panel').hidden = false;
+  // La tabla de participantes necesita el ancho de la pantalla.
+  $('principal').classList.add('ancho');
+}
+
+$('acceso').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  $('error').hidden = true;
+  $('entrar').disabled = true;
+  $('entrar').textContent = 'Entrando…';
+  try {
+    const r = await fetch(`${API}/auth/login`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario: $('usuario').value.trim(), contrasena: $('contrasena').value }),
+    });
+    if (r.status === 401) throw new Error('credenciales');
+    if (!r.ok) throw new Error('red');
+    token = (await r.json()).accessToken;
+    await cargar();
+  } catch (err) {
+    mostrarError(err);
+  } finally {
+    $('entrar').disabled = false;
+    $('entrar').textContent = 'Entrar';
+  }
+});
+
+$('actualizar').addEventListener('click', () => cargar().catch(mostrarError));
+
+$('tabla-participantes').addEventListener('click', async (ev) => {
+  const codigo = ev.target.dataset?.borrar;
+  if (!codigo || !window.confirm(`¿Borrar la encuesta de ${codigo}? No se puede deshacer.`)) return;
+  try {
+    await pedir(`/encuesta/${encodeURIComponent(codigo)}`, { method: 'DELETE' });
+    await cargar();
+  } catch (err) {
+    mostrarError(err);
+  }
+});
+
+$('csv').addEventListener('click', () => {
+  const celda = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const cabecera = ['participante', 'edad', 'escolaridad', 'area_salud', 'anos_telefono', 'equipo', 'modelo',
+    ...Array.from({ length: 10 }, (_, i) => `sus${i + 1}`), 'sus_puntaje',
+    ...Array.from({ length: 8 }, (_, i) => `tarea${i + 1}`), 'dificil', 'cambiaria', 'otros', 'envios', 'actualizado'];
+  const filas = datos.respuestas.map((r) => [r.participante, r.perfil.edad, r.perfil.escolaridad, r.perfil.areaSalud,
+    r.perfil.anosTelefono, r.perfil.equipo, r.perfil.modelo, ...r.sus, r.susPuntaje, ...r.tareas,
+    r.comentarios.dificil, r.comentarios.cambiaria, r.comentarios.otros, r.envios, r.actualizadoEn]);
+  // BOM para que Excel lea bien las tildes.
+  const texto = '﻿' + [cabecera, ...filas].map((f) => f.map(celda).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([texto], { type: 'text/csv;charset=utf-8' }));
+  a.download = `encuesta_nutriz_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+});
+
+</script>
+</body>
+</html>

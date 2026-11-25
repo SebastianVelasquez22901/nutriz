@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Encuesta Nutriz</title>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<main>
+  <img class="logo" src="logo.png" alt="Nutriz">
+  <form id="encuesta" novalidate>
+    <div class="tarjeta">
+      <h1>Encuesta sobre Nutriz</h1>
+      <p>Gracias por probar la aplicación. Responde pensando en lo que hiciste hoy. No hay respuestas buenas ni malas: evaluamos la aplicación, no a ti.</p>
+      <label for="participante">Tu código de participante</label>
+      <p class="ayuda">Te lo da la persona que te acompañó en la prueba (por ejemplo, P03).</p>
+      <select id="participante" required>
+        <option value="">Elige tu código</option>
+      </select>
+      <div class="opciones" style="margin-top: 14px">
+        <label><input type="checkbox" id="consentimiento"> Acepto participar. Mis respuestas se guardan sin mi nombre y se usan solo en una tesis de la Universidad de San Carlos de Guatemala.</label>
+      </div>
+    </div>
+
+    <div class="tarjeta">
+      <h2>Sobre ti</h2>
+      <fieldset class="opciones" data-campo="edad"><legend>¿Cuántos años tienes?</legend></fieldset>
+      <fieldset class="opciones" data-campo="escolaridad"><legend>¿Hasta qué grado estudiaste?</legend></fieldset>
+      <fieldset class="opciones" data-campo="areaSalud"><legend>¿Trabajas o estudias en el área de salud?</legend></fieldset>
+      <fieldset class="opciones" data-campo="anosTelefono"><legend>¿Cuántos años llevas usando un teléfono inteligente?</legend></fieldset>
+      <fieldset class="opciones" data-campo="equipo"><legend>¿En qué equipo probaste la aplicación?</legend></fieldset>
+      <label for="modelo">Marca y modelo del equipo (si lo sabes)</label>
+      <input id="modelo" maxlength="80" placeholder="Por ejemplo: Samsung A14">
+    </div>
+
+    <div class="tarjeta">
+      <h2>Tu experiencia con la aplicación</h2>
+      <!-- Instrucciones e ítems del SUS en español, tal como los publican Sevilla-Gonzalez et al. (2020, anexo 2). -->
+      <p>Por favor seleccione de cada uno de los enunciados la opción que mejor describa su experiencia con la herramienta electrónica. Un puntaje de 1 significa que usted se encuentra totalmente en desacuerdo con el enunciado, mientras que un puntaje en 5 significa que está totalmente de acuerdo, un puntaje de 3 significaría que usted se encuentra neutral con el enunciado.</p>
+      <div id="sus"></div>
+    </div>
+
+    <div class="tarjeta">
+      <h2>Las tareas que hiciste</h2>
+      <p>Con la misma escala: 1 es totalmente en desacuerdo y 5, totalmente de acuerdo.</p>
+      <div id="tareas"></div>
+    </div>
+
+    <div class="tarjeta">
+      <h2>En tus palabras (opcional)</h2>
+      <label for="dificil">¿Qué fue lo más difícil o confuso?</label>
+      <textarea id="dificil" maxlength="1500"></textarea>
+      <label for="cambiaria">¿Qué le cambiarías a la aplicación?</label>
+      <textarea id="cambiaria" maxlength="1500"></textarea>
+      <label for="otros">¿Algo más que quieras decirnos?</label>
+      <textarea id="otros" maxlength="1500"></textarea>
+      <button id="enviar" type="submit">Enviar la encuesta</button>
+      <div class="error" id="error" role="alert" hidden></div>
+    </div>
+  </form>
+
+  <div class="tarjeta" id="gracias" hidden>
+    <div class="exito">¡Gracias! Tu encuesta se guardó.</div>
+    <p style="margin-top: 14px">Ya puedes cerrar esta página. Si probaste la aplicación en tu propio teléfono, recuerda desinstalarla.</p>
+    <a class="boton secundario" href="./">Volver al inicio</a>
+  </div>
+  <p class="pie"><a href="./">Volver al inicio</a></p>
+</main>
+<script>
+const API = 'https://nutriz-api-6635.azurewebsites.net';
+// Despierta el servidor (Azure F1 se duerme sin uso) mientras la persona responde.
+fetch(`${API}/salud`, { mode: 'no-cors' }).catch(() => {});
+
+// Los valores deben coincidir con backend/src/encuesta/dto.ts.
+const PERFIL = {
+  edad: [['18-25', '18 a 25'], ['26-35', '26 a 35'], ['36-45', '36 a 45'], ['46-60', '46 a 60'], ['61+', '61 o más']],
+  escolaridad: [['ninguna', 'No estudié'], ['primaria', 'Primaria'], ['basicos', 'Básicos'], ['diversificado', 'Diversificado'], ['universidad', 'Universidad']],
+  areaSalud: [['si', 'Sí'], ['no', 'No']],
+  anosTelefono: [['<1', 'Menos de 1 año'], ['1-3', '1 a 3 años'], ['4-6', '4 a 6 años'], ['>6', 'Más de 6 años']],
+  equipo: [['telefono', 'Teléfono'], ['tablet', 'Tablet']],
+};
+const SUS = [
+  'Me gustaría usar esta herramienta frecuentemente.',
+  'Considero que esta herramienta es innecesariamente compleja',
+  'Considero que la herramienta es fácil de usar.',
+  'Considero necesario el apoyo de personal experto para poder utilizar esta herramienta',
+  'Considero que las funciones de la herramienta están bien integradas',
+  'Considero que la herramienta presenta muchas contradicciones',
+  'Imagino que la mayoría de las personas aprenderían a usar esta herramienta rápidamente',
+  'Considero que el uso de esta herramienta es tedioso',
+  'Me sentí muy confiado al usar la herramienta',
+  'Necesité saber bastantes cosas antes de poder empezar a usar esta herramienta',
+];
+// Una o dos por cada parte del objetivo general: recolectar (1, 2, 4), analizar (3, 5), gestionar (6, 7) y sin
+// conexión (8). No es un instrumento validado: se reporta como complemento descriptivo del SUS.
+const TAREAS = [
+  'Fue fácil registrar a un niño nuevo.',
+  'Fue fácil anotar el peso, la talla y el perímetro del brazo.',
+  'Entendí qué significa el color del resultado y qué debo hacer.',
+  'Fue fácil llenar el cuestionario de riesgo.',
+  'Entendí el resultado del cuestionario de riesgo.',
+  'Supe cuándo mis datos ya habían llegado al servidor.',
+  'Fue fácil encontrar a un niño ya registrado.',
+  'Me sentiría seguro de usar esta aplicación en un lugar sin internet.',
+];
+
+const $ = (id) => document.getElementById(id);
+for (let i = 1; i <= 15; i++) {
+  const c = `P${String(i).padStart(2, '0')}`;
+  $('participante').add(new Option(c, c));
+}
+for (const [campo, opciones] of Object.entries(PERFIL)) {
+  const fs = document.querySelector(`[data-campo="${campo}"]`);
+  for (const [valor, texto] of opciones) {
+    const l = document.createElement('label');
+    l.innerHTML = `<input type="radio" name="${campo}" value="${valor}"> ${texto}`;
+    fs.appendChild(l);
+  }
+}
+function escala(contenedor, prefijo, preguntas) {
+  preguntas.forEach((texto, i) => {
+    const fs = document.createElement('fieldset');
+    fs.className = 'pregunta';
+    fs.dataset.nombre = `${prefijo}${i}`;
+    const botones = [1, 2, 3, 4, 5]
+      .map((v) => `<label><input type="radio" name="${prefijo}${i}" value="${v}" aria-label="${v}"><span>${v}</span></label>`).join('');
+    fs.innerHTML = `<legend class="sr">${i + 1}. ${texto}</legend><span aria-hidden="true">${i + 1}. ${texto}</span>`
+      + `<div class="escala">${botones}</div><div class="extremos"><span>Totalmente en desacuerdo</span><span>Totalmente de acuerdo</span></div>`;
+    contenedor.appendChild(fs);
+  });
+}
+escala($('sus'), 'sus', SUS);
+escala($('tareas'), 'tarea', TAREAS);
+// La leyenda accesible existe para los lectores de pantalla; en pantalla se ve el <span>.
+document.head.insertAdjacentHTML('beforeend', '<style>.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}</style>');
+
+// Al responder, la pregunta deja de estar marcada como faltante.
+$('encuesta').addEventListener('change', (ev) => ev.target.closest('.falta')?.classList.remove('falta'));
+
+const elegido = (nombre) => document.querySelector(`input[name="${nombre}"]:checked`)?.value;
+
+$('encuesta').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  $('error').hidden = true;
+  document.querySelectorAll('.falta').forEach((e) => e.classList.remove('falta'));
+  const faltan = [];
+  if (!$('participante').value) faltan.push($('participante'));
+  if (!$('consentimiento').checked) faltan.push($('consentimiento').closest('.opciones'));
+  for (const campo of Object.keys(PERFIL)) if (!elegido(campo)) faltan.push(document.querySelector(`[data-campo="${campo}"]`));
+  for (const [p, n] of [['sus', SUS.length], ['tarea', TAREAS.length]]) {
+    for (let i = 0; i < n; i++) if (!elegido(`${p}${i}`)) faltan.push(document.querySelector(`[data-nombre="${p}${i}"]`));
+  }
+  if (faltan.length) {
+    faltan.forEach((e) => e.classList.add('falta'));
+    $('error').textContent = faltan.length === 1 ? 'Falta 1 respuesta (marcada en rojo).' : `Faltan ${faltan.length} respuestas (marcadas en rojo).`;
+    $('error').hidden = false;
+    faltan[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  const cuerpo = {
+    participante: $('participante').value,
+    consentimiento: true,
+    perfil: Object.fromEntries([...Object.keys(PERFIL).map((c) => [c, elegido(c)]), ...($('modelo').value.trim() ? [['modelo', $('modelo').value.trim()]] : [])]),
+    sus: SUS.map((_, i) => Number(elegido(`sus${i}`))),
+    tareas: TAREAS.map((_, i) => Number(elegido(`tarea${i}`))),
+    comentarios: Object.fromEntries(['dificil', 'cambiaria', 'otros'].map((c) => [c, $(c).value.trim()]).filter(([, v]) => v)),
+  };
+  $('enviar').disabled = true;
+  $('enviar').textContent = 'Enviando…';
+  try {
+    // Hasta 90 s: si el servidor estaba dormido, la primera respuesta tarda.
+    const control = new AbortController();
+    const reloj = setTimeout(() => control.abort(), 90000);
+    const r = await fetch(`${API}/encuesta`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo), signal: control.signal,
+    }).finally(() => clearTimeout(reloj));
+    if (!r.ok) throw new Error(String(r.status));
+    $('encuesta').hidden = true;
+    $('gracias').hidden = false;
+    window.scrollTo({ top: 0 });
+  } catch {
+    $('error').textContent = 'No se pudo enviar. Revisa tu conexión a internet y toca "Enviar" otra vez; tus respuestas siguen aquí.';
+    $('error').hidden = false;
+  } finally {
+    $('enviar').disabled = false;
+    $('enviar').textContent = 'Enviar la encuesta';
+  }
+});
+</script>
+</body>
+</html>
