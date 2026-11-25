@@ -78,6 +78,8 @@
 // El APK está cifrado (prototipo/descarga/cifrar_apk.mjs): AES-256-GCM en partes, con la llave derivada del usuario
 // y la contraseña. Se descifra aquí, en el teléfono; sin las credenciales correctas el archivo no sirve.
 const $ = (id) => document.getElementById(id);
+// Despierta el servidor de pruebas (el plan F1 de Azure se duerme sin uso y tarda en arrancar) mientras se descarga.
+fetch('https://nutriz-api-6635.azurewebsites.net/salud', { mode: 'no-cors' }).catch(() => {});
 const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 const texto = new TextEncoder();
 
@@ -90,7 +92,7 @@ function iv(base, n) {
 
 async function llave(usuario, contrasena, meta) {
   const material = await crypto.subtle.importKey(
-    'raw', texto.encode(`${usuario.trim().toLowerCase()}\n${contrasena}`), 'PBKDF2', false, ['deriveKey']);
+    'raw', texto.encode(`${usuario.trim().toLowerCase()}\n${contrasena.trim().toLowerCase()}`), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
     { name: 'PBKDF2', salt: b64(meta.sal), iterations: meta.iteraciones, hash: 'SHA-256' },
     material, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
