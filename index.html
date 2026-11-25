@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Descargar Nutriz</title>
+<style>
+  :root {
+    --fondo: #F5F7F6; --tarjeta: #FFFFFF; --texto: #17211C; --suave: #5B6A62; --borde: #D5DDD8;
+    --primario: #1F6F4A; --primario-suave: #E6F2EC; --rojo: #C62828; --rojo-suave: #FDECEC;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--fondo); color: var(--texto);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; justify-content: center; padding: 32px 16px;
+  }
+  main { width: 100%; max-width: 420px; }
+  .logo { display: block; width: 180px; max-width: 60%; margin: 0 auto 24px; }
+  .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 14px; padding: 24px; }
+  h1 { font-size: 1.35rem; margin: 0 0 6px; }
+  p { margin: 0 0 16px; color: var(--suave); }
+  label { display: block; font-weight: 600; margin: 14px 0 6px; }
+  input {
+    width: 100%; font: inherit; padding: 12px 14px; border: 1px solid var(--borde); border-radius: 10px;
+    background: var(--tarjeta); color: var(--texto);
+  }
+  input:focus { outline: 2px solid var(--primario); outline-offset: 1px; border-color: var(--primario); }
+  button {
+    width: 100%; margin-top: 22px; padding: 14px; font: inherit; font-weight: 700; color: #fff;
+    background: var(--primario); border: 0; border-radius: 10px; cursor: pointer;
+  }
+  button:disabled { opacity: .6; cursor: default; }
+  .barra { height: 8px; background: var(--primario-suave); border-radius: 99px; overflow: hidden; margin-top: 18px; }
+  .barra div { height: 100%; width: 0; background: var(--primario); transition: width .2s; }
+  .estado { margin: 10px 0 0; font-size: .95rem; color: var(--suave); min-height: 1.5em; }
+  .error { margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: var(--rojo-suave); color: var(--rojo); }
+  ol { margin: 8px 0 0; padding-left: 1.3em; color: var(--texto); }
+  li { margin: 6px 0; }
+  .pie { text-align: center; font-size: .85rem; color: var(--suave); margin-top: 18px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="logo.png" alt="Nutriz">
+  <div class="tarjeta">
+    <section id="formulario">
+      <h1>Descargar la aplicación</h1>
+      <p>Prototipo para la prueba de usabilidad. Escribe el usuario y la contraseña que te dieron.</p>
+      <form id="acceso" autocomplete="off">
+        <label for="usuario">Usuario</label>
+        <input id="usuario" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+        <label for="contrasena">Contraseña</label>
+        <input id="contrasena" type="password" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+        <button id="boton" type="submit">Descargar</button>
+      </form>
+      <div class="barra" id="barra" hidden><div></div></div>
+      <div class="estado" id="estado" role="status" aria-live="polite"></div>
+      <div class="error" id="error" role="alert" hidden></div>
+    </section>
+    <section id="listo" hidden>
+      <h1>Descarga lista</h1>
+      <p>Ahora instala la aplicación:</p>
+      <ol>
+        <li>Abre el archivo <strong>Nutriz.apk</strong> desde la notificación o desde la carpeta Descargas.</li>
+        <li>Si el teléfono lo pide, permite instalar aplicaciones desde el navegador.</li>
+        <li>Si aparece un aviso de Play Protect, toca <strong>Más detalles</strong> y luego <strong>Instalar de todas formas</strong>. La aplicación es un prototipo y no está en Play Store.</li>
+        <li>Al terminar la prueba, desinstálala: se borran todos sus datos.</li>
+      </ol>
+      <button id="otra" type="button">Descargar otra vez</button>
+    </section>
+  </div>
+  <p class="pie">Requiere Android 7.0 o superior.</p>
+</main>
+<script>
+// El APK está cifrado (prototipo/descarga/cifrar_apk.mjs): AES-256-GCM en partes, con la llave derivada del usuario
+// y la contraseña. Se descifra aquí, en el teléfono; sin las credenciales correctas el archivo no sirve.
+const $ = (id) => document.getElementById(id);
+const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+const texto = new TextEncoder();
+
+function iv(base, n) {
+  const v = base.slice();
+  const d = new DataView(v.buffer);
+  d.setUint32(8, (d.getUint32(8) ^ n) >>> 0);
+  return v;
+}
+
+async function llave(usuario, contrasena, meta) {
+  const material = await crypto.subtle.importKey(
+    'raw', texto.encode(`${usuario.trim().toLowerCase()}\n${contrasena}`), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: b64(meta.sal), iterations: meta.iteraciones, hash: 'SHA-256' },
+    material, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+}
+
+const descifrar = (k, base, n, datos) =>
+  crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv(base, n), additionalData: texto.encode(`nutriz:${n}`) }, k, datos);
+
+function progreso(fraccion, mensaje) {
+  $('barra').hidden = false;
+  $('barra').firstElementChild.style.width = `${Math.round(fraccion * 100)}%`;
+  $('estado').textContent = mensaje;
+}
+
+async function bajar(total, alAvanzar) {
+  const r = await fetch('nutriz.apk.cifrado', { cache: 'no-store' });
+  if (!r.ok) throw new Error('descarga');
+  const datos = new Uint8Array(total);
+  const lector = r.body.getReader();
+  let llevado = 0;
+  for (;;) {
+    const { done, value } = await lector.read();
+    if (done) break;
+    if (llevado + value.length > total) throw new Error('descarga');
+    datos.set(value, llevado);
+    llevado += value.length;
+    alAvanzar(llevado / total);
+  }
+  if (llevado !== total) throw new Error('descarga');
+  return datos;
+}
+
+$('acceso').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  $('error').hidden = true;
+  $('boton').disabled = true;
+  $('boton').textContent = 'Revisando…';
+  try {
+    const meta = await (await fetch('nutriz.json', { cache: 'no-store' })).json();
+    const base = b64(meta.iv);
+    const k = await llave($('usuario').value, $('contrasena').value, meta);
+    try {
+      await descifrar(k, base, 0xffffffff, b64(meta.comprobante));
+    } catch {
+      throw new Error('credenciales');
+    }
+    $('boton').textContent = 'Descargando…';
+    const conEtiqueta = meta.parte + 16;
+    const total = meta.tamano + 16 * meta.partes;
+    const datos = await bajar(total, (f) => progreso(f * 0.9, `Descargando… ${Math.round(f * 100)} %`));
+    const partes = [];
+    for (let n = 0; n < meta.partes; n++) {
+      partes.push(await descifrar(k, base, n, datos.subarray(n * conEtiqueta, Math.min((n + 1) * conEtiqueta, total))));
+      progreso(0.9 + 0.1 * (n + 1) / meta.partes, 'Preparando el archivo…');
+    }
+    const url = URL.createObjectURL(new Blob(partes, { type: 'application/vnd.android.package-archive' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Nutriz.apk';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
+    $('formulario').hidden = true;
+    $('listo').hidden = false;
+  } catch (err) {
+    $('error').textContent = err.message === 'credenciales'
+      ? 'Usuario o contraseña incorrectos.'
+      : 'No se pudo descargar. Revisa tu conexión a internet e inténtalo de nuevo.';
+    $('error').hidden = false;
+    $('barra').hidden = true;
+    $('estado').textContent = '';
+  } finally {
+    $('boton').disabled = false;
+    $('boton').textContent = 'Descargar';
+  }
+});
+
+$('otra').addEventListener('click', () => {
+  $('listo').hidden = true;
+  $('formulario').hidden = false;
+  $('barra').hidden = true;
+  $('estado').textContent = '';
+});
+</script>
+</body>
+</html>
