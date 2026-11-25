@@ -1,0 +1,14 @@
+# Mantiene despierto el servidor de la prueba (App Service F1 de Azure, que se duerme tras unos 20 min sin uso).
+# Llama a /salud, que no toca la base: la base se despierta sola cuando alguien abre la página (/salud/bd).
+# Desactivarlo al terminar la prueba: Actions > Mantener el servidor despierto > ... > Disable workflow.
+name: Mantener el servidor despierto
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+jobs:
+  despertar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - run: curl -fsS -m 120 --retry 2 https://nutriz-api-6635.azurewebsites.net/salud

@@ -5,8 +5,8 @@ const API = 'https://nutriz-api-6635.azurewebsites.net';
 const CLAVE_PARTICIPANTE = 'nutriz.participante';
 const CLAVE_TAREA = 'nutriz.tarea';
 
-// Despierta el servidor de pruebas (el plan F1 de Azure se duerme sin uso y tarda en arrancar).
-fetch(`${API}/salud`, { mode: 'no-cors' }).catch(() => {});
+// Despierta el servidor de pruebas y su base (la base se pausa tras una hora sin uso y tarda en volver; T116).
+fetch(`${API}/salud/bd`, { mode: 'no-cors' }).catch(() => {});
 
 function participanteGuardado() {
   try { return JSON.parse(localStorage.getItem(CLAVE_PARTICIPANTE) ?? 'null'); } catch { return null; }
