@@ -55,9 +55,8 @@ fetch(`${API}/salud`, { mode: 'no-cors' }).catch(() => {});
 
 // Deben coincidir con encuesta.html.
 const TAREAS = [
-  'Registrar a un niño nuevo', 'Anotar peso, talla y perímetro', 'Entender el color y qué hacer',
-  'Llenar el cuestionario de riesgo', 'Entender el resultado del riesgo', 'Saber si los datos llegaron',
-  'Encontrar a un niño registrado', 'Usarla sin internet',
+  'Anotar los datos del niño y su medición', 'Llenar el cuestionario de riesgo', 'Entender el color y qué hacer',
+  'Saber si los datos llegaron', 'Usarla sin internet',
 ];
 const ETIQUETAS = {
   escolaridad: { ninguna: 'Ninguna', primaria: 'Primaria', basicos: 'Básicos', diversificado: 'Diversificado', universidad: 'Universidad' },
@@ -162,7 +161,7 @@ $('csv').addEventListener('click', () => {
   const celda = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const cabecera = ['participante', 'edad', 'escolaridad', 'area_salud', 'anos_telefono', 'equipo', 'modelo',
     ...Array.from({ length: 10 }, (_, i) => `sus${i + 1}`), 'sus_puntaje',
-    ...Array.from({ length: 8 }, (_, i) => `tarea${i + 1}`), 'dificil', 'cambiaria', 'otros', 'envios', 'actualizado'];
+    ...Array.from({ length: 5 }, (_, i) => `tarea${i + 1}`), 'dificil', 'cambiaria', 'otros', 'envios', 'actualizado'];
   const filas = datos.respuestas.map((r) => [r.participante, r.perfil.edad, r.perfil.escolaridad, r.perfil.areaSalud,
     r.perfil.anosTelefono, r.perfil.equipo, r.perfil.modelo, ...r.sus, r.susPuntaje, ...r.tareas,
     r.comentarios.dificil, r.comentarios.cambiaria, r.comentarios.otros, r.envios, r.actualizadoEn]);

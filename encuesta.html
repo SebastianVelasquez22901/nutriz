@@ -6,66 +6,32 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Encuesta Nutriz</title>
 <link rel="stylesheet" href="estilos.css">
+<style>
+  .progreso { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .progreso .barra { flex: 1; margin: 0; }
+  .progreso small { color: var(--suave); white-space: nowrap; }
+  .atras { background: none; color: var(--primario); width: auto; margin: 0; padding: 4px 0; font-weight: 600; }
+  .seccion { font-size: .85rem; font-weight: 700; color: var(--primario); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+  .pregunta-texto { font-size: 1.2rem; font-weight: 700; line-height: 1.35; margin: 0 0 18px; color: var(--texto); }
+  .lista-opciones { display: grid; gap: 10px; }
+  .lista-opciones button, .codigos button {
+    margin: 0; background: var(--tarjeta); color: var(--texto); border: 1px solid var(--borde); font-weight: 600; text-align: left; padding: 14px 16px;
+  }
+  .lista-opciones button.elegido, .codigos button.elegido, .likert button.elegido { background: var(--primario); color: #fff; border-color: var(--primario); }
+  .codigos { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .codigos button { text-align: center; padding: 14px 0; }
+  .likert { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .likert button { margin: 0; height: 56px; padding: 0; font-size: 1.2rem; background: var(--tarjeta); color: var(--texto); border: 1px solid var(--borde); }
+  .extremos { font-size: .85rem; }
+  .paso { animation: entrar .2s ease-out; }
+  @keyframes entrar { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .paso { animation: none; } }
+</style>
 </head>
 <body>
 <main>
   <img class="logo" src="logo.png" alt="Nutriz">
-  <form id="encuesta" novalidate>
-    <div class="tarjeta">
-      <h1>Encuesta sobre Nutriz</h1>
-      <p>Gracias por probar la aplicación. Responde pensando en lo que hiciste hoy. No hay respuestas buenas ni malas: evaluamos la aplicación, no a ti.</p>
-      <label for="participante">Tu código de participante</label>
-      <p class="ayuda">Te lo da la persona que te acompañó en la prueba (por ejemplo, P03).</p>
-      <select id="participante" required>
-        <option value="">Elige tu código</option>
-      </select>
-      <div class="opciones" style="margin-top: 14px">
-        <label><input type="checkbox" id="consentimiento"> Acepto participar. Mis respuestas se guardan sin mi nombre y se usan solo en una tesis de la Universidad de San Carlos de Guatemala.</label>
-      </div>
-    </div>
-
-    <div class="tarjeta">
-      <h2>Sobre ti</h2>
-      <fieldset class="opciones" data-campo="edad"><legend>¿Cuántos años tienes?</legend></fieldset>
-      <fieldset class="opciones" data-campo="escolaridad"><legend>¿Hasta qué grado estudiaste?</legend></fieldset>
-      <fieldset class="opciones" data-campo="areaSalud"><legend>¿Trabajas o estudias en el área de salud?</legend></fieldset>
-      <fieldset class="opciones" data-campo="anosTelefono"><legend>¿Cuántos años llevas usando un teléfono inteligente?</legend></fieldset>
-      <fieldset class="opciones" data-campo="equipo"><legend>¿En qué equipo probaste la aplicación?</legend></fieldset>
-      <label for="modelo">Marca y modelo del equipo (si lo sabes)</label>
-      <input id="modelo" maxlength="80" placeholder="Por ejemplo: Samsung A14">
-    </div>
-
-    <div class="tarjeta">
-      <h2>Tu experiencia con la aplicación</h2>
-      <!-- Instrucciones e ítems del SUS en español, tal como los publican Sevilla-Gonzalez et al. (2020, anexo 2). -->
-      <p>Por favor seleccione de cada uno de los enunciados la opción que mejor describa su experiencia con la herramienta electrónica. Un puntaje de 1 significa que usted se encuentra totalmente en desacuerdo con el enunciado, mientras que un puntaje en 5 significa que está totalmente de acuerdo, un puntaje de 3 significaría que usted se encuentra neutral con el enunciado.</p>
-      <div id="sus"></div>
-    </div>
-
-    <div class="tarjeta">
-      <h2>Las tareas que hiciste</h2>
-      <p>Con la misma escala: 1 es totalmente en desacuerdo y 5, totalmente de acuerdo.</p>
-      <div id="tareas"></div>
-    </div>
-
-    <div class="tarjeta">
-      <h2>En tus palabras (opcional)</h2>
-      <label for="dificil">¿Qué fue lo más difícil o confuso?</label>
-      <textarea id="dificil" maxlength="1500"></textarea>
-      <label for="cambiaria">¿Qué le cambiarías a la aplicación?</label>
-      <textarea id="cambiaria" maxlength="1500"></textarea>
-      <label for="otros">¿Algo más que quieras decirnos?</label>
-      <textarea id="otros" maxlength="1500"></textarea>
-      <button id="enviar" type="submit">Enviar la encuesta</button>
-      <div class="error" id="error" role="alert" hidden></div>
-    </div>
-  </form>
-
-  <div class="tarjeta" id="gracias" hidden>
-    <div class="exito">¡Gracias! Tu encuesta se guardó.</div>
-    <p style="margin-top: 14px">Ya puedes cerrar esta página. Si probaste la aplicación en tu propio teléfono, recuerda desinstalarla.</p>
-    <a class="boton secundario" href="./">Volver al inicio</a>
-  </div>
+  <div class="tarjeta" id="tarjeta"></div>
   <p class="pie"><a href="./">Volver al inicio</a></p>
 </main>
 <script>
@@ -73,14 +39,16 @@ const API = 'https://nutriz-api-6635.azurewebsites.net';
 // Despierta el servidor (Azure F1 se duerme sin uso) mientras la persona responde.
 fetch(`${API}/salud`, { mode: 'no-cors' }).catch(() => {});
 
+const ESCALA = 'De 1 (totalmente en desacuerdo) a 5 (totalmente de acuerdo)';
 // Los valores deben coincidir con backend/src/encuesta/dto.ts.
-const PERFIL = {
-  edad: [['18-25', '18 a 25'], ['26-35', '26 a 35'], ['36-45', '36 a 45'], ['46-60', '46 a 60'], ['61+', '61 o más']],
-  escolaridad: [['ninguna', 'No estudié'], ['primaria', 'Primaria'], ['basicos', 'Básicos'], ['diversificado', 'Diversificado'], ['universidad', 'Universidad']],
-  areaSalud: [['si', 'Sí'], ['no', 'No']],
-  anosTelefono: [['<1', 'Menos de 1 año'], ['1-3', '1 a 3 años'], ['4-6', '4 a 6 años'], ['>6', 'Más de 6 años']],
-  equipo: [['telefono', 'Teléfono'], ['tablet', 'Tablet']],
-};
+const PERFIL = [
+  ['edad', '¿Cuántos años tienes?', [['18-25', '18 a 25'], ['26-35', '26 a 35'], ['36-45', '36 a 45'], ['46-60', '46 a 60'], ['61+', '61 o más']]],
+  ['escolaridad', '¿Hasta qué grado estudiaste?', [['ninguna', 'No estudié'], ['primaria', 'Primaria'], ['basicos', 'Básicos'], ['diversificado', 'Diversificado'], ['universidad', 'Universidad']]],
+  ['areaSalud', '¿Trabajas o estudias en el área de salud?', [['si', 'Sí'], ['no', 'No']]],
+  ['anosTelefono', '¿Cuántos años llevas usando un teléfono inteligente?', [['<1', 'Menos de 1 año'], ['1-3', '1 a 3 años'], ['4-6', '4 a 6 años'], ['>6', 'Más de 6 años']]],
+  ['equipo', '¿En qué equipo probaste la aplicación?', [['telefono', 'Teléfono'], ['tablet', 'Tablet']]],
+];
+// SUS en español, tal como lo publican Sevilla-Gonzalez et al. (2020, anexo 2).
 const SUS = [
   'Me gustaría usar esta herramienta frecuentemente.',
   'Considero que esta herramienta es innecesariamente compleja',
@@ -93,101 +61,151 @@ const SUS = [
   'Me sentí muy confiado al usar la herramienta',
   'Necesité saber bastantes cosas antes de poder empezar a usar esta herramienta',
 ];
-// Una o dos por cada parte del objetivo general: recolectar (1, 2, 4), analizar (3, 5), gestionar (6, 7) y sin
-// conexión (8). No es un instrumento validado: se reporta como complemento descriptivo del SUS.
+const INSTRUCCIONES_SUS = 'Por favor seleccione de cada uno de los enunciados la opción que mejor describa su experiencia con la herramienta electrónica. Un puntaje de 1 significa que usted se encuentra totalmente en desacuerdo con el enunciado, mientras que un puntaje en 5 significa que está totalmente de acuerdo, un puntaje de 3 significaría que usted se encuentra neutral con el enunciado.';
+// Una por cada parte del objetivo general: recolectar (1, 2), analizar (3), gestionar (4) y sin conexión (5). No es
+// un instrumento validado: se reporta como complemento descriptivo del SUS. Deben coincidir con resultados.html.
 const TAREAS = [
-  'Fue fácil registrar a un niño nuevo.',
-  'Fue fácil anotar el peso, la talla y el perímetro del brazo.',
-  'Entendí qué significa el color del resultado y qué debo hacer.',
+  'Fue fácil anotar los datos del niño y su medición.',
   'Fue fácil llenar el cuestionario de riesgo.',
-  'Entendí el resultado del cuestionario de riesgo.',
+  'Entendí qué significa el color del resultado y qué debo hacer.',
   'Supe cuándo mis datos ya habían llegado al servidor.',
-  'Fue fácil encontrar a un niño ya registrado.',
-  'Me sentiría seguro de usar esta aplicación en un lugar sin internet.',
+  'Me sentiría seguro de usar la aplicación en un lugar sin internet.',
 ];
 
+// Cada paso es una pantalla. `cuenta` marca las preguntas que suman en la barra de progreso.
+const PASOS = [
+  { tipo: 'inicio' },
+  { tipo: 'codigo', cuenta: true },
+  { tipo: 'consentimiento', cuenta: true },
+  ...PERFIL.map(([campo, texto, opciones]) => ({ tipo: 'opciones', seccion: 'Sobre ti', campo, texto, opciones, cuenta: true })),
+  { tipo: 'aviso', seccion: 'Tu experiencia', texto: INSTRUCCIONES_SUS },
+  ...SUS.map((texto, i) => ({ tipo: 'likert', seccion: 'Tu experiencia', campo: `sus${i}`, texto, cuenta: true })),
+  ...TAREAS.map((texto, i) => ({ tipo: 'likert', seccion: 'Las tareas que hiciste', campo: `tarea${i}`, texto, cuenta: true })),
+  { tipo: 'texto', seccion: 'En tus palabras (opcional)', campo: 'dificil', texto: '¿Qué fue lo más difícil o confuso?', cuenta: true },
+  { tipo: 'texto', seccion: 'En tus palabras (opcional)', campo: 'cambiaria', texto: '¿Qué le cambiarías a la aplicación?', cuenta: true },
+  { tipo: 'enviar' },
+];
+const TOTAL = PASOS.filter((p) => p.cuenta).length;
+
+// Las respuestas se guardan en esta pestaña: si la página se recarga, no se pierden.
+let r = {};
+try { r = JSON.parse(sessionStorage.getItem('encuesta') ?? '{}'); } catch { r = {}; }
+const guardar = () => { try { sessionStorage.setItem('encuesta', JSON.stringify(r)); } catch {} };
+let i = 0;
+// Evita que un doble toque rápido salte una pregunta mientras se pasa a la siguiente.
+let avanzando = false;
+
 const $ = (id) => document.getElementById(id);
-for (let i = 1; i <= 15; i++) {
-  const c = `P${String(i).padStart(2, '0')}`;
-  $('participante').add(new Option(c, c));
-}
-for (const [campo, opciones] of Object.entries(PERFIL)) {
-  const fs = document.querySelector(`[data-campo="${campo}"]`);
-  for (const [valor, texto] of opciones) {
-    const l = document.createElement('label');
-    l.innerHTML = `<input type="radio" name="${campo}" value="${valor}"> ${texto}`;
-    fs.appendChild(l);
-  }
-}
-function escala(contenedor, prefijo, preguntas) {
-  preguntas.forEach((texto, i) => {
-    const fs = document.createElement('fieldset');
-    fs.className = 'pregunta';
-    fs.dataset.nombre = `${prefijo}${i}`;
-    const botones = [1, 2, 3, 4, 5]
-      .map((v) => `<label><input type="radio" name="${prefijo}${i}" value="${v}" aria-label="${v}"><span>${v}</span></label>`).join('');
-    fs.innerHTML = `<legend class="sr">${i + 1}. ${texto}</legend><span aria-hidden="true">${i + 1}. ${texto}</span>`
-      + `<div class="escala">${botones}</div><div class="extremos"><span>Totalmente en desacuerdo</span><span>Totalmente de acuerdo</span></div>`;
-    contenedor.appendChild(fs);
-  });
-}
-escala($('sus'), 'sus', SUS);
-escala($('tareas'), 'tarea', TAREAS);
-// La leyenda accesible existe para los lectores de pantalla; en pantalla se ve el <span>.
-document.head.insertAdjacentHTML('beforeend', '<style>.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}</style>');
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-// Al responder, la pregunta deja de estar marcada como faltante.
-$('encuesta').addEventListener('change', (ev) => ev.target.closest('.falta')?.classList.remove('falta'));
+function cabecera(paso) {
+  const n = PASOS.slice(0, i + 1).filter((p) => p.cuenta).length;
+  return `<div class="progreso"><button class="atras" type="button" data-accion="atras">‹ Atrás</button>`
+    + `<div class="barra"><div style="width:${Math.round(n / TOTAL * 100)}%"></div></div><small>${n} de ${TOTAL}</small></div>`
+    + (paso.seccion ? `<div class="seccion">${paso.seccion}</div>` : '');
+}
 
-const elegido = (nombre) => document.querySelector(`input[name="${nombre}"]:checked`)?.value;
+function pintar() {
+  const p = PASOS[i];
+  let html = '';
+  if (p.tipo === 'inicio') {
+    html = `<h1>¿Cómo te fue con Nutriz?</h1><p>Son ${TOTAL} preguntas cortas, unos 3 minutos. Toca una respuesta y pasa sola a la siguiente.</p>`
+      + `<p>No hay respuestas buenas ni malas: evaluamos la aplicación, no a ti. No te pedimos tu nombre.</p>`
+      + `<button type="button" data-accion="siguiente">Empezar</button>`;
+  } else if (p.tipo === 'codigo') {
+    const botones = Array.from({ length: 15 }, (_, k) => `P${String(k + 1).padStart(2, '0')}`)
+      .map((c) => `<button type="button" data-valor="${c}" class="${r.participante === c ? 'elegido' : ''}">${c.slice(1)}</button>`).join('');
+    html = cabecera(p) + `<p class="pregunta-texto">¿Cuál es tu código de participante?</p>`
+      + `<p class="ayuda">Te lo da la persona que te acompañó (por ejemplo, P03).</p><div class="codigos">${botones}</div>`;
+  } else if (p.tipo === 'consentimiento') {
+    html = cabecera(p) + `<p class="pregunta-texto">Antes de seguir</p>`
+      + `<p>Tus respuestas se guardan sin tu nombre, solo con tu código, y se usan de forma agregada en una tesis de la Universidad de San Carlos de Guatemala. Puedes dejar la encuesta cuando quieras.</p>`
+      + `<button type="button" data-accion="acepto">Acepto y sigo</button>`;
+  } else if (p.tipo === 'opciones') {
+    html = cabecera(p) + `<p class="pregunta-texto">${p.texto}</p><div class="lista-opciones">`
+      + p.opciones.map(([v, t]) => `<button type="button" data-valor="${v}" class="${r[p.campo] === v ? 'elegido' : ''}">${t}</button>`).join('') + '</div>';
+  } else if (p.tipo === 'aviso') {
+    html = cabecera(p) + `<p class="pregunta-texto">Ahora, 10 frases sobre la aplicación</p><p>${p.texto}</p>`
+      + `<button type="button" data-accion="siguiente">Seguir</button>`;
+  } else if (p.tipo === 'likert') {
+    html = cabecera(p) + `<p class="pregunta-texto">${p.texto}</p><div class="likert" role="group" aria-label="${ESCALA}">`
+      + [1, 2, 3, 4, 5].map((v) => `<button type="button" data-valor="${v}" class="${r[p.campo] === v ? 'elegido' : ''}">${v}</button>`).join('')
+      + '</div><div class="extremos"><span>Totalmente en desacuerdo</span><span>Totalmente de acuerdo</span></div>';
+  } else if (p.tipo === 'texto') {
+    html = cabecera(p) + `<p class="pregunta-texto">${p.texto}</p>`
+      + `<textarea id="texto" maxlength="1500" placeholder="Escribe aquí (puedes dejarlo vacío)">${esc(r[p.campo] ?? '')}</textarea>`
+      + `<button type="button" data-accion="texto">Siguiente</button>`;
+  } else if (p.tipo === 'enviar') {
+    html = cabecera(p) + `<p class="pregunta-texto">¡Listo! Ya respondiste todo.</p><p>Toca el botón para enviar tus respuestas.</p>`
+      + `<button type="button" data-accion="enviar" id="enviar">Enviar la encuesta</button><div class="error" id="error" role="alert" hidden></div>`;
+  } else if (p.tipo === 'gracias') {
+    html = `<div class="exito">¡Gracias! Tu encuesta se guardó.</div>`
+      + `<p style="margin-top:14px">Ya puedes cerrar esta página. Si probaste la aplicación en tu propio teléfono, recuerda desinstalarla.</p>`
+      + `<a class="boton secundario" href="./">Volver al inicio</a>`;
+  }
+  $('tarjeta').innerHTML = `<div class="paso">${html}</div>`;
+  $('texto')?.focus();
+}
 
-$('encuesta').addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  $('error').hidden = true;
-  document.querySelectorAll('.falta').forEach((e) => e.classList.remove('falta'));
-  const faltan = [];
-  if (!$('participante').value) faltan.push($('participante'));
-  if (!$('consentimiento').checked) faltan.push($('consentimiento').closest('.opciones'));
-  for (const campo of Object.keys(PERFIL)) if (!elegido(campo)) faltan.push(document.querySelector(`[data-campo="${campo}"]`));
-  for (const [p, n] of [['sus', SUS.length], ['tarea', TAREAS.length]]) {
-    for (let i = 0; i < n; i++) if (!elegido(`${p}${i}`)) faltan.push(document.querySelector(`[data-nombre="${p}${i}"]`));
-  }
-  if (faltan.length) {
-    faltan.forEach((e) => e.classList.add('falta'));
-    $('error').textContent = faltan.length === 1 ? 'Falta 1 respuesta (marcada en rojo).' : `Faltan ${faltan.length} respuestas (marcadas en rojo).`;
-    $('error').hidden = false;
-    faltan[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-    return;
-  }
-  const cuerpo = {
-    participante: $('participante').value,
-    consentimiento: true,
-    perfil: Object.fromEntries([...Object.keys(PERFIL).map((c) => [c, elegido(c)]), ...($('modelo').value.trim() ? [['modelo', $('modelo').value.trim()]] : [])]),
-    sus: SUS.map((_, i) => Number(elegido(`sus${i}`))),
-    tareas: TAREAS.map((_, i) => Number(elegido(`tarea${i}`))),
-    comentarios: Object.fromEntries(['dificil', 'cambiaria', 'otros'].map((c) => [c, $(c).value.trim()]).filter(([, v]) => v)),
-  };
+const ir = (paso) => { avanzando = false; i = Math.max(0, Math.min(PASOS.length - 1, paso)); pintar(); window.scrollTo({ top: 0 }); };
+
+async function enviar() {
+  // Por si alguien llegó al final saltándose una pantalla (no debería poder): vuelve a la primera sin responder.
+  const falta = PASOS.findIndex((p) => p.cuenta && p.tipo !== 'texto' && (p.tipo === 'codigo' ? !r.participante
+    : p.tipo === 'consentimiento' ? !r.consentimiento : r[p.campo] === undefined));
+  if (falta >= 0) return ir(falta);
   $('enviar').disabled = true;
   $('enviar').textContent = 'Enviando…';
+  const cuerpo = {
+    participante: r.participante,
+    consentimiento: true,
+    perfil: Object.fromEntries(PERFIL.map(([c]) => [c, r[c]])),
+    sus: SUS.map((_, k) => r[`sus${k}`]),
+    tareas: TAREAS.map((_, k) => r[`tarea${k}`]),
+    comentarios: Object.fromEntries(['dificil', 'cambiaria'].map((c) => [c, (r[c] ?? '').trim()]).filter(([, v]) => v)),
+  };
   try {
     // Hasta 90 s: si el servidor estaba dormido, la primera respuesta tarda.
     const control = new AbortController();
     const reloj = setTimeout(() => control.abort(), 90000);
-    const r = await fetch(`${API}/encuesta`, {
+    const res = await fetch(`${API}/encuesta`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo), signal: control.signal,
     }).finally(() => clearTimeout(reloj));
-    if (!r.ok) throw new Error(String(r.status));
-    $('encuesta').hidden = true;
-    $('gracias').hidden = false;
-    window.scrollTo({ top: 0 });
+    if (!res.ok) throw new Error(String(res.status));
+    try { sessionStorage.removeItem('encuesta'); } catch {}
+    PASOS.push({ tipo: 'gracias' });
+    ir(PASOS.length - 1);
   } catch {
     $('error').textContent = 'No se pudo enviar. Revisa tu conexión a internet y toca "Enviar" otra vez; tus respuestas siguen aquí.';
     $('error').hidden = false;
-  } finally {
     $('enviar').disabled = false;
     $('enviar').textContent = 'Enviar la encuesta';
   }
+}
+
+$('tarjeta').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button');
+  if (!b) return;
+  const p = PASOS[i];
+  const accion = b.dataset.accion;
+  if (accion === 'atras') return ir(i - 1);
+  if (accion === 'siguiente') return ir(i + 1);
+  if (accion === 'acepto') { r.consentimiento = true; guardar(); return ir(i + 1); }
+  if (accion === 'texto') { r[p.campo] = $('texto').value; guardar(); return ir(i + 1); }
+  if (accion === 'enviar') return enviar();
+  if (b.dataset.valor !== undefined) {
+    if (avanzando) return;
+    avanzando = true;
+    const valor = p.tipo === 'likert' ? Number(b.dataset.valor) : b.dataset.valor;
+    if (p.tipo === 'codigo') r.participante = valor; else r[p.campo] = valor;
+    guardar();
+    b.parentElement.querySelectorAll('button').forEach((x) => x.classList.toggle('elegido', x === b));
+    // Un instante para que se vea lo elegido antes de pasar a la siguiente.
+    setTimeout(() => ir(i + 1), 220);
+  }
 });
+
+pintar();
 </script>
 </body>
 </html>
