@@ -101,3 +101,6 @@ button.mini { display: inline-block; width: auto; margin: 0; padding: 6px 10px; 
 .tarjeta-datos dd { margin: 0 0 8px; font-weight: 700; }
 .respuestas { font-size: .95rem; margin: 0; padding-left: 1.2em; }
 .respuestas li { margin: 3px 0; }
+.video-ayuda { background: var(--primario-suave); border-radius: 12px; padding: 12px; margin: 8px 0 16px; }
+.video-ayuda p { margin: 0 0 10px; }
+.video-ayuda video { display: block; width: auto; max-width: 100%; max-height: 75vh; margin: 0 auto; border-radius: 10px; background: #000; }

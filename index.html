@@ -32,6 +32,12 @@
   </div>
   <div class="tarjeta">
     <div class="seccion-paso">Paso 1</div>
+    <div class="video-ayuda">
+      <p><b>¿Nunca has instalado una aplicación así?</b> Mira este video de 3 minutos: muestra cada paso de la descarga y la instalación.</p>
+      <video controls playsinline preload="none" poster="video_portada.jpg" controlslist="nodownload noplaybackrate" disablepictureinpicture oncontextmenu="return false">
+        <source src="instalar_nutriz.mp4" type="video/mp4">
+      </video>
+    </div>
     <section id="formulario">
       <h1>Descargar la aplicación</h1>
       <p>Escribe el usuario y la contraseña de descarga que te enviaron por mensaje.</p>
@@ -50,10 +56,11 @@
       <h1>Descarga lista</h1>
       <p>Ahora instala la aplicación:</p>
       <ol>
-        <li>Abre el archivo <strong>Nutriz.apk</strong> desde la notificación o desde la carpeta Descargas.</li>
-        <li>Si dice que por seguridad no puede instalar aplicaciones de esta fuente, toca <strong>Configuración</strong>, activa <strong>Permitir de esta fuente</strong>, vuelve atrás y toca <strong>Instalar</strong>.</li>
-        <li>Si aparece un aviso de Play Protect, toca <strong>Más detalles</strong> y luego <strong>Instalar de todas formas</strong>. Es normal: la aplicación es un prototipo y no está en Play Store.</li>
-        <li>Ya instalada, vuelve a desactivar el permiso: en <strong>Ajustes</strong> busca <strong>instalar aplicaciones desconocidas</strong>, toca tu navegador y desactiva <strong>Permitir de esta fuente</strong>.</li>
+        <li>Si el navegador avisa que <strong>el archivo puede ser dañino</strong>, toca <strong>Descargar de todos modos</strong>. Es normal: la aplicación es un prototipo y no está en Play Store.</li>
+        <li>Abre el archivo <strong>Nutriz.apk</strong> desde el aviso del navegador, la notificación o la carpeta Descargas.</li>
+        <li>Si dice que por seguridad no puede instalar aplicaciones de esta fuente, toca <strong>Configuración</strong> y activa <strong>Permitir de esta fuente</strong> (en algunos teléfonos dice <strong>Confiar en esta fuente</strong>). Luego toca <strong>Instalar</strong>; si no aparece, vuelve atrás y toca otra vez el archivo.</li>
+        <li>Si aparece un aviso de Play Protect, toca <strong>Más detalles</strong> y luego <strong>Instalar de todas formas</strong>.</li>
+        <li>Ya instalada, vuelve a desactivar el permiso: en <strong>Ajustes</strong> busca <strong>instalar aplicaciones desconocidas</strong>, toca tu navegador y desactiva <strong>Permitir de esta fuente</strong> (o <strong>Confiar en esta fuente</strong>).</li>
         <li>Al terminar la prueba, desinstala Nutriz: se borran todos sus datos.</li>
       </ol>
       <button id="otra" type="button" class="secundario">Descargar otra vez</button>
@@ -72,7 +79,7 @@
     <a class="boton" href="encuesta.html">Llenar la encuesta</a>
     <a class="boton secundario" href="manual.pdf" target="_blank" rel="noopener">Manual de uso (PDF), por si te trabas</a>
   </div>
-  <p class="pie"><a href="#" id="otra-persona">¿Otra persona va a participar en este teléfono?</a></p>
+  <button type="button" id="otra-persona" class="secundario">¿Otra persona va a participar en este teléfono?</button>
   </div>
   <p class="pie">Requiere Android 7.0 o superior. · <a href="resultados.html">Resultados (administrador)</a></p>
 </main>
