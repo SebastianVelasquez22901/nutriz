@@ -20,18 +20,32 @@ function olvidarParticipante() {
   try { localStorage.removeItem(CLAVE_PARTICIPANTE); localStorage.removeItem(CLAVE_TAREA); } catch {}
 }
 
-/** POST con hasta 90 s de espera: si el servidor estaba dormido, la primera respuesta tarda. */
-async function enviarJson(ruta, cuerpo) {
+/** Petición con hasta 90 s de espera: si el servidor estaba dormido, la primera respuesta tarda. */
+async function pedirJson(ruta, opciones = {}) {
   const control = new AbortController();
   const reloj = setTimeout(() => control.abort(), 90000);
   try {
-    const r = await fetch(`${API}${ruta}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo), signal: control.signal,
-    });
+    const r = await fetch(`${API}${ruta}`, { ...opciones, signal: control.signal });
     const datos = await r.json().catch(() => ({}));
     if (!r.ok) throw Object.assign(new Error(datos.message ?? `El servidor respondió ${r.status}`), { status: r.status });
     return datos;
   } finally {
     clearTimeout(reloj);
+  }
+}
+
+/**
+ * POST que reintenta si falla la red o el servidor (500 o más), por ejemplo porque la base estaba pausada (T119):
+ * antes de cada reintento espera a que `/salud/bd` confirme que la base volvió. Los 4xx no se reintentan.
+ */
+async function enviarJson(ruta, cuerpo, alReintentar) {
+  for (let intento = 1; ; intento++) {
+    try {
+      return await pedirJson(ruta, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) });
+    } catch (err) {
+      if ((err.status && err.status < 500) || intento === 3) throw err;
+      alReintentar?.();
+      await pedirJson('/salud/bd').catch(() => new Promise((listo) => setTimeout(listo, 5000)));
+    }
   }
 }

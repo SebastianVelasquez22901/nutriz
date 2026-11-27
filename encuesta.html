@@ -149,23 +149,26 @@ async function enviar() {
     comprension: Object.fromEntries(COMPRENSION.map(([c]) => [c, r[c]])),
     comentarios: Object.fromEntries(['dificil', 'cambiaria'].map((c) => [c, (r[c] ?? '').trim()]).filter(([, v]) => v)),
   };
+  const esperando = () => { $('enviar').textContent = 'Conectando con el servidor, espera un momento…'; };
   try {
     let res;
     try {
-      res = await enviarJson('/encuesta', cuerpo);
+      res = await enviarJson('/encuesta', cuerpo, esperando);
     } catch (err) {
       // El número guardado ya no existe en el servidor (por ejemplo, se borró una prueba): se envía sin número y el
       // servidor asigna uno nuevo.
       if (err.status !== 400 || !cuerpo.participante) throw err;
       olvidarParticipante();
-      res = await enviarJson('/encuesta', { ...cuerpo, participante: undefined });
+      res = await enviarJson('/encuesta', { ...cuerpo, participante: undefined }, esperando);
     }
     const { participante } = res;
     try { sessionStorage.removeItem('encuesta'); } catch {}
     PASOS.push({ tipo: 'gracias', participante });
     ir(PASOS.length - 1);
-  } catch {
-    $('error').textContent = 'No se pudo enviar. Revisa tu conexión a internet y toca "Enviar" otra vez; tus respuestas siguen aquí.';
+  } catch (err) {
+    // El código entre paréntesis sirve para saber, por una captura, si falló la red o el servidor.
+    $('error').textContent = 'No se pudo enviar. Revisa tu conexión a internet y toca "Enviar" otra vez; tus respuestas siguen aquí.'
+      + ` (${err.status ?? 'sin respuesta'})`;
     $('error').hidden = false;
     $('enviar').disabled = false;
     $('enviar').textContent = 'Enviar la encuesta';
